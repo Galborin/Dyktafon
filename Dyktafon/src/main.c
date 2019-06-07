@@ -3,16 +3,12 @@
   * @date    31.05.2019
 */
 
+/*
+ * Be sure that symbol USE_USB_FS is present before build.
+ */
+
 /*includes*********************************************************************/
-#include "stm32f7xx.h"
-#include "stm32f723e_discovery.h"
-#include "stdio.h"
-#include "usbh_core.h"
-#include "usbh_diskio_dma.h"
-#include "ff.h"
-#include "ff_gen_drv.h"
-#include "lcd_log.h"
-#include "appfiles.h"
+#include "main.h"
 
 
 /*private functions prototypes************************************************/
@@ -23,17 +19,21 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id);
 static void Error_Handler(void);
 static void LCD_ClearTextZone(void);
 
-/*global variables*/
+/*global variables***********************************************************/
 char USBKey_Path[4] = "0:/";
 USBH_HandleTypeDef hUSBHost;
 FATFS USBH_FatFs;
+ApplicationState_t AppState = APPLICATION_IDLE;
+
+/*imported******************************************************************/
+extern void AudioProcess(void);
 
 int main(void)
 {
-	 /* Configure the MPU attributes for PSRAM external memory */
-	  MPU_Config();
-	 /* Enable the CPU Cache */
-	 CPU_CACHE_Enable();
+	/* Configure the MPU attributes for PSRAM external memory */
+	MPU_Config();
+	/* Enable the CPU Cache */
+	CPU_CACHE_Enable();
 	/* STM32F7xx HAL library initialization:
 	   - Configure the Flash ART accelerator on ITCM interface
 	   - Configure the Systick to generate an interrupt each 1 msec
@@ -60,20 +60,15 @@ int main(void)
 	/* Init the LCD Log module */
 	LCD_LOG_Init();
 
-	LCD_LOG_SetHeader((uint8_t *)"A P P");
+	LCD_LOG_SetHeader((uint8_t *)"D Y K T A F O N");
 
 	while(1){
 
 		/* USB Host Background task */
 		USBH_Process(&hUSBHost);
 
-		if (file_create() < 0){
-			LCD_ErrLog("file_create() fail!! \n");
-		}
-		else{
-			LCD_ErrLog("Closing file...\n");
-			file_close();
-		}
+		/*Audio background task*/
+		AudioProcess();
 	}
 }
 
@@ -225,14 +220,18 @@ static void SystemClock_Config(void)
   }
 }
 
-/*static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id){
+/**
+ * callback function to USBHInit().
+ */
+static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id){
 	switch(id)
 	  {
 	  case HOST_USER_SELECT_CONFIGURATION:
 	    break;
 
 	  case HOST_USER_DISCONNECTION:
-
+		AppState = APPLICATION_ERROR;
+		LCD_ErrLog("Host disconnection! \n");
 	    LCD_ClearTextZone();
 	    if(FATFS_UnLinkDriver(USBKey_Path) != 0)
 	    {
@@ -245,10 +244,11 @@ static void SystemClock_Config(void)
 	    break;
 
 	  case HOST_USER_CLASS_ACTIVE:
+		AppState = APPLICATION_READY;
 	    break;
 
 	  case HOST_USER_CONNECTION:
-	     /* Link the USB Mass Storage disk I/O driver *//*
+	     /* Link the USB Mass Storage disk I/O driver */
 	    if(FATFS_LinkDriver(&USBH_Driver, USBKey_Path) != 0)
 	    {
 	      LCD_ErrLog("ERROR : Cannot link FatFS driver! \n");
@@ -257,29 +257,14 @@ static void SystemClock_Config(void)
 	    if(f_mount(&USBH_FatFs, "", 0) != FR_OK)
 	    {
 	      LCD_ErrLog("ERROR : Cannot Initialize FatFs! \n");
-	     break;
+	      break;
 	    }
-
 	    break;
 
 	  default:
 	    break;
 	  }
 }
-*/
-static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id){
-	/* Link the USB Mass Storage disk I/O driver */
-	if(FATFS_LinkDriver(&USBH_Driver, USBKey_Path) != 0)
-	{
-		LCD_ErrLog("ERROR : Cannot link FatFS driver! \n");
-	}
-	if(f_mount(&USBH_FatFs, "", 0) != FR_OK)
-	{
-		LCD_ErrLog("ERROR : Cannot Initialize FatFs! \n");
-	}
-}
-
-
 
 /*
  * @brief Clears lines from 3 to 15

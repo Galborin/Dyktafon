@@ -1,22 +1,32 @@
+/**
+ * 31.05.2019
+ *
+ */
 
-#include "appfiles.h"
+/*includes*******************************************************************/
+#include "audiorecorder.h"
+
 
 
 /*public variables***********************************************************/
 FIL WavFile;
-WAVE_FormatTypeDef WaveFormat;
+WaveFormat_t WaveFormat;
+AudioInBuffer_t AudioBuffer;
+
+/*imported******************************************************************/
+//extern ApplicationState_t AppState;
 
 /*private functions prototypes**********************************************/
 static uint32_t WavProcess_EncInit(uint32_t Freq, uint8_t* pHeader);
-static uint32_t WavProcess_HeaderInit(uint8_t* pHeader, WAVE_FormatTypeDef* pWaveFormatStruct);
-//static uint32_t WavProcess_HeaderUpdate(uint8_t* pHeader, WAVE_FormatTypeDef* pWaveFormatStruct);
+static uint32_t WavProcess_HeaderInit(uint8_t* pHeader, WaveFormat_t* pWaveFormatStruct);
+static uint32_t WavProcess_HeaderUpdate(uint8_t* pHeader, WaveFormat_t* pWaveFormatStruct);
 
-/*private variables********************************************************/
+/*private variables*********************************************************/
 static uint8_t pHeaderBuff[44];
 
+/*function definitions******************************************************/
 
-
-int file_create(void){
+int WavFile_Create(void){
 	uint32_t byteswritten = 0;
 
 	if(f_open(&WavFile, REC_WAVE_NAME, FA_CREATE_ALWAYS | FA_WRITE) == FR_OK)
@@ -26,31 +36,108 @@ int file_create(void){
 			/* Write header file */
 			if(f_write(&WavFile, pHeaderBuff, 44, (void*)&byteswritten) == FR_OK)
 			{
-				return 0;
+				return byteswritten;
 			}
 
 		}
 	return -1;
 }
 
-int file_close(void){
-	//uint32_t byteswritten = 0;
+int WavFile_Close(void){
+	uint32_t byteswritten = 0;
 
-	//if(f_lseek(&WavFile, 0) == FR_OK)
-	//{
+	if(f_lseek(&WavFile, 0) == FR_OK)
+	{
 		/* Update the wav file header save it into wav file */
-		//WavProcess_HeaderUpdate(pHeaderBuff, &WaveFormat);
-		//if(f_write(&WavFile, pHeaderBuff, sizeof(WAVE_FormatTypeDef), (void*)&byteswritten) == FR_OK)
-		//{
+		WavProcess_HeaderUpdate(pHeaderBuff, &WaveFormat);
+		if(f_write(&WavFile, pHeaderBuff, sizeof(WaveFormat_t), (void*)&byteswritten) == FR_OK)
+		{
 			/* Close file */
 			f_close(&WavFile);
-			return 0;
-		//}
+			return byteswritten;
+		}
+	}
 
-	//}
-
-	//return -1;
+	return -1;
 }
+
+int AudRecInit(void){
+	uint32_t byteswritten = 0;
+
+	if((byteswritten = WavFile_Create()) > 0){
+
+		BSP_AUDIO_IN_InitEx(INPUT_DEVICE_DIGITAL_MICROPHONE_2, BSP_AUDIO_FREQUENCY_8K, DEFAULT_AUDIO_IN_BIT_RESOLUTION, DEFAULT_AUDIO_IN_CHANNEL_NBR);
+		BSP_AUDIO_IN_Record((uint16_t*)&AudioBuffer.buffer, BUFFER_SIZE);
+		AudioBuffer.pcm_ptr = 0;
+		AudioBuffer.offset = 0;
+		AudioBuffer.fileptr = byteswritten;
+		AudioBuffer.state = BUFFER_EMPTY;
+		return byteswritten;
+
+	}
+
+	return -1;
+
+}
+
+int AudRecProcess(void){
+
+	uint32_t byteswritten = 0;
+
+	if(AudioBuffer.state == BUFFER_FULL){
+
+		if(f_write(&WavFile, (uint8_t*)(AudioBuffer.buffer + AudioBuffer.offset),
+					BUFFER_SIZE, (void*)&byteswritten) != FR_OK){
+
+			return -1;
+		}
+
+		AudioBuffer.fileptr += byteswritten;
+		AudioBuffer.state = BUFFER_EMPTY;
+
+	}
+	return byteswritten;
+}
+/*
+ * @brief	Implementation of callback. Handles DMA Transfer Complete event.
+ */
+void BSP_AUDIO_IN_TransferComplete_CallBack(void){
+	AudioBuffer.pcm_ptr += BUFFER_SIZE/2;
+	if(AudioBuffer.pcm_ptr == BUFFER_SIZE/2)
+	{
+		AudioBuffer.state   =  BUFFER_FULL;
+		AudioBuffer.offset  = 0;
+	}
+	if(AudioBuffer.pcm_ptr >= BUFFER_SIZE)
+	{
+		AudioBuffer.state   =  BUFFER_FULL;
+		AudioBuffer.offset  = BUFFER_SIZE/2;
+		AudioBuffer.pcm_ptr = 0;
+	}
+}
+
+/*
+ * @brief	Implementation of callback. Handles DMA Half Transfer Complete event.
+ */
+void BSP_AUDIO_IN_HalfTransfer_CallBack(void){
+	AudioBuffer.pcm_ptr += BUFFER_SIZE/2;
+	if(AudioBuffer.pcm_ptr == BUFFER_SIZE/2)
+	{
+		AudioBuffer.state   =  BUFFER_FULL;
+		AudioBuffer.offset  = 0;
+	}
+
+	if(AudioBuffer.pcm_ptr >= BUFFER_SIZE)
+	{
+		AudioBuffer.state   =  BUFFER_FULL;
+		AudioBuffer.offset  = BUFFER_SIZE/2;
+		AudioBuffer.pcm_ptr = 0;
+	}
+}
+
+/*************************************************************************/
+/*************************************************************************/
+/*************************************************************************/
 
 
 /**
@@ -87,7 +174,7 @@ static uint32_t WavProcess_EncInit(uint32_t Freq, uint8_t* pHeader)
   * @param  pWaveFormatStruct: Pointer to the wave structure to be filled.
   * @retval 0 if passed, !0 if failed.
   */
-static uint32_t WavProcess_HeaderInit(uint8_t* pHeader, WAVE_FormatTypeDef* pWaveFormatStruct)
+static uint32_t WavProcess_HeaderInit(uint8_t* pHeader, WaveFormat_t* pWaveFormatStruct)
 {
   /* Write chunkID, must be 'RIFF'  ------------------------------------------*/
   pHeader[0] = 'R';
@@ -172,23 +259,23 @@ static uint32_t WavProcess_HeaderInit(uint8_t* pHeader, WAVE_FormatTypeDef* pWav
   * @param  pWaveFormatStruct: Pointer to the wave structure to be filled.
   * @retval 0 if passed, !0 if failed.
   */
-//static uint32_t WavProcess_HeaderUpdate(uint8_t* pHeader, WAVE_FormatTypeDef* pWaveFormatStruct)
-//{
+static uint32_t WavProcess_HeaderUpdate(uint8_t* pHeader, WaveFormat_t* pWaveFormatStruct)
+{
   /* Write the file length ---------------------------------------------------*/
   /* The sampling time: this value will be written back at the end of the
      recording operation.  Example: 661500 Btyes = 0x000A17FC, byte[7]=0x00, byte[4]=0xFC */
-//  pHeader[4] = (uint8_t)(BufferCtl.fptr);
-//  pHeader[5] = (uint8_t)(BufferCtl.fptr >> 8);
-//  pHeader[6] = (uint8_t)(BufferCtl.fptr >> 16);
-//  pHeader[7] = (uint8_t)(BufferCtl.fptr >> 24);
+  pHeader[4] = (uint8_t)(AudioBuffer.fileptr);
+  pHeader[5] = (uint8_t)(AudioBuffer.fileptr >> 8);
+  pHeader[6] = (uint8_t)(AudioBuffer.fileptr >> 16);
+  pHeader[7] = (uint8_t)(AudioBuffer.fileptr >> 24);
   /* Write the number of sample data -----------------------------------------*/
   /* This variable will be written back at the end of the recording operation */
-//  BufferCtl.fptr -=44;
- // pHeader[40] = (uint8_t)(BufferCtl.fptr);
-//  pHeader[41] = (uint8_t)(BufferCtl.fptr >> 8);
-//  pHeader[42] = (uint8_t)(BufferCtl.fptr >> 16);
-//  pHeader[43] = (uint8_t)(BufferCtl.fptr >> 24);
+  AudioBuffer.fileptr -= 44;
+  pHeader[40] = (uint8_t)(AudioBuffer.fileptr);
+  pHeader[41] = (uint8_t)(AudioBuffer.fileptr >> 8);
+  pHeader[42] = (uint8_t)(AudioBuffer.fileptr >> 16);
+  pHeader[43] = (uint8_t)(AudioBuffer.fileptr >> 24);
 
   /* Return 0 if all operations are OK */
-//  return 0;
-//}
+  return 0;
+}
