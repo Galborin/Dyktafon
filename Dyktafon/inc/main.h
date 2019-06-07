@@ -14,6 +14,7 @@
 #include "ff.h"
 #include "ff_gen_drv.h"
 #include "lcd_log.h"
+#include "stm32f723e_discovery_ts.h"
 
 /*application state machine*/
 typedef enum {
@@ -24,5 +25,11 @@ typedef enum {
 	APPLICATION_REC_STOP,
 	APPLICATION_ERROR,
 }ApplicationState_t;
+
+/*functions to manage touchscreen**********************************************/
+uint8_t  Touchscreen_Calibration (void);
+uint16_t TouchScreen_Get_Calibrated_X(uint16_t x);
+uint16_t TouchScreen_Get_Calibrated_Y(uint16_t y);
+uint8_t  TouchScreen_IsCalibrationDone(void);
 
 #endif

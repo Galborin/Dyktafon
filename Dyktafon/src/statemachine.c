@@ -5,19 +5,22 @@
 
 /*includes*******************************************************************/
 #include "audiorecorder.h"
-#include "stm32f723e_discovery_ts.h"
 
 /*imported*******************************************************************/
 extern ApplicationState_t AppState;
 
 /*defines********************************************************************/
-#define STOP_XMIN 20
-#define STOP_XMAX 125
+#define STOP_XMIN 80
+#define STOP_XMAX 160
 #define STOP_YMIN 100
 #define STOP_YMAX 239
 
+/*public variables***********************************************************/
+TS_StateTypeDef TS_State = {0};
+
 /*function definitions*******************************************************/
 void AudioProcess(void) {
+	uint8_t x,y;
 
 	switch(AppState){
 
@@ -44,6 +47,24 @@ void AudioProcess(void) {
 		break;
 
 	case APPLICATION_RECORDING:
+
+		if(TS_State.touchDetected == 1){   /* If previous touch has not been released, we don't proceed any touch command */
+			BSP_TS_GetState(&TS_State);
+		}
+		else{
+			BSP_TS_GetState(&TS_State);
+			x = TouchScreen_Get_Calibrated_X(TS_State.touchX[0]);
+			y = TouchScreen_Get_Calibrated_Y(TS_State.touchY[0]);
+			if(TS_State.touchDetected == 1)
+			{
+				if ((x > STOP_XMIN) && (x < STOP_XMAX) &&
+					(y > STOP_YMIN) && (y < STOP_YMAX)){
+
+					AppState = APPLICATION_REC_STOP;
+				}
+
+			}
+		}
 
 		if(AudRecProcess() < 0){
 			LCD_ErrLog("ERROR : AudRecProcess() fail! \n");

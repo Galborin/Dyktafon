@@ -57,7 +57,16 @@ int main(void)
 	/* Enable the display */
 	BSP_LCD_DisplayOn();
 
-	/* Init the LCD Log module */
+    /* Initialize the TS in IT mode if not already initialized */
+	if (TouchScreen_IsCalibrationDone() == 0)
+	{
+		Touchscreen_Calibration();
+	}
+  	BSP_TS_ITConfig();
+  	/* Init TS module */
+  	BSP_TS_Init(BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+
+  	/* Init the LCD Log module */
 	LCD_LOG_Init();
 
 	LCD_LOG_SetHeader((uint8_t *)"D Y K T A F O N");
