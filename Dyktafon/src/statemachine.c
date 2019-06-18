@@ -39,7 +39,7 @@ void AudioProcess(void) {
 
 	case APPLICATION_REC_INIT:
 		if(AudRecInit() < 0){
-			LCD_ErrLog("ERROR : AudRecInit() fail! \n");
+			LCD_ErrLog("AudRecInit() fail! \n");
 			AppState = APPLICATION_ERROR;
 			break;
 		}
@@ -67,14 +67,14 @@ void AudioProcess(void) {
 		}
 
 		if(AudRecProcess() < 0){
-			LCD_ErrLog("ERROR : AudRecProcess() fail! \n");
+			LCD_ErrLog("AudRecProcess() fail! \n");
 			AppState = APPLICATION_ERROR;
 		}
 		break;
 
 	case APPLICATION_REC_STOP:
 		if(WavFile_Close() < 0){
-			LCD_ErrLog("ERROR : WavFile_Close() fail! \n");
+			LCD_ErrLog("WavFile_Close() fail! \n");
 			AppState = APPLICATION_ERROR;
 		}
 		break;
@@ -84,7 +84,7 @@ void AudioProcess(void) {
 
 	default:
 		AppState = APPLICATION_ERROR;
-		LCD_ErrLog("ERROR : Application in ERROR state! \n");
+		LCD_ErrLog("Application in ERROR state! \n");
 		break;
 	}
 
