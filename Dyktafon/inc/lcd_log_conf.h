@@ -53,7 +53,7 @@
 /* Exported types ----------------------------------------------------------- */
 /* Exported constants ------------------------------------------------------- */
 /* Define the LCD default text color */
-#define     LCD_LOG_DEFAULT_COLOR    LCD_COLOR_WHITE
+#define     LCD_LOG_DEFAULT_COLOR    LCD_COLOR_BLACK
 
 /* Comment the line below to disable the scroll back and forward features */
 #define     LCD_SCROLL_ENABLED      1
@@ -63,10 +63,10 @@
 #define     LCD_LOG_TEXT_FONT                     Font12
 
 /* Define the LCD LOG Color */
-#define     LCD_LOG_BACKGROUND_COLOR              LCD_COLOR_MAGENTA
+#define     LCD_LOG_BACKGROUND_COLOR              LCD_COLOR_DARKCYAN
 #define     LCD_LOG_TEXT_COLOR                    LCD_COLOR_BLACK
 
-#define     LCD_LOG_SOLID_BACKGROUND_COLOR        LCD_COLOR_WHITE
+#define     LCD_LOG_SOLID_BACKGROUND_COLOR        LCD_COLOR_CYAN
 #define     LCD_LOG_SOLID_TEXT_COLOR              LCD_COLOR_BLACK
 
 /* Define the cache depth */

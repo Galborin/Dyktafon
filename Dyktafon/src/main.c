@@ -11,25 +11,23 @@
 #include "main.h"
 
 
-/*private functions prototypes************************************************/
+/*private functions prototypes*************************************************/
 static void MPU_Config(void);
 static void CPU_CACHE_Enable(void);
 static void SystemClock_Config(void);
 static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id);
 static void Error_Handler(void);
-static void LCD_ClearTextZone(void);
 
-/*global variables***********************************************************/
+/*global variables************************************************************/
 char USBKey_Path[4] = "0:/";
 USBH_HandleTypeDef hUSBHost;
 FATFS USBH_FatFs;
 ApplicationState_t AppState = APPLICATION_IDLE;
 
-/*imported******************************************************************/
+/*imported********************************************************************/
 extern void AudioProcess(void);
 
-int main(void)
-{
+int main(void) {
 	/* Configure the MPU attributes for PSRAM external memory */
 	MPU_Config();
 	/* Enable the CPU Cache */
@@ -41,41 +39,33 @@ int main(void)
 	   - Global MSP (MCU Support Package) initialization
 	*/
 	HAL_Init();
+	/*configure clock*/
 	SystemClock_Config();
-
 	/*Initialize USBH Process*/
 	USBH_Init(&hUSBHost, USBH_UserProcess, 0);
-
 	/* Add Supported Class */
 	USBH_RegisterClass(&hUSBHost, USBH_MSC_CLASS);
-
 	/* Start Host Process */
 	USBH_Start(&hUSBHost);
-
 	/* Initialize the LCD */
 	BSP_LCD_Init();
 	/* Enable the display */
 	BSP_LCD_DisplayOn();
-
     /* Initialize the TS in IT mode if not already initialized */
-	if (TouchScreen_IsCalibrationDone() == 0)
-	{
+	if (TouchScreen_IsCalibrationDone() == 0) {
 		Touchscreen_Calibration();
 	}
-  	BSP_TS_ITConfig();
-  	/* Init TS module */
+	BSP_TS_ITConfig();
+	/* Init TS module */
   	BSP_TS_Init(BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
-
   	/* Init the LCD Log module */
 	LCD_LOG_Init();
-
+	/*Display header*/
 	LCD_LOG_SetHeader((uint8_t *)"D Y K T A F O N");
-
-	while(1){
-
+	/*main loop**************************************************************/
+	while (1) {
 		/* USB Host Background task */
 		USBH_Process(&hUSBHost);
-
 		/*Audio background task*/
 		AudioProcess();
 	}
@@ -89,14 +79,10 @@ int main(void)
   * @param  None
   * @retval None
   */
-static void MPU_Config(void)
-{
+static void MPU_Config(void) {
   MPU_Region_InitTypeDef MPU_InitStruct;
-
   /* Disable the MPU */
   HAL_MPU_Disable();
-
-
   /* Configure the MPU attributes for SRAM1 as WT */
   MPU_InitStruct.Enable = MPU_REGION_ENABLE;
   MPU_InitStruct.BaseAddress = SRAM1_BASE;
@@ -109,7 +95,6 @@ static void MPU_Config(void)
   MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
   MPU_InitStruct.SubRegionDisable = 0x00;
   MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
   /* Configure the MPU attributes for PSRAM with recomended configurations:
      Normal memory, Shareable, write-back */
@@ -124,9 +109,7 @@ static void MPU_Config(void)
   MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
   MPU_InitStruct.SubRegionDisable = 0x00;
   MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
-
   /* Enable the MPU */
   HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
 }
@@ -136,11 +119,9 @@ static void MPU_Config(void)
   * @param  None
   * @retval None
   */
-static void CPU_CACHE_Enable(void)
-{
+static void CPU_CACHE_Enable(void) {
   /* Enable I-Cache */
   SCB_EnableICache();
-
   /* Enable D-Cache */
   SCB_EnableDCache();
 }
@@ -165,21 +146,17 @@ static void CPU_CACHE_Enable(void)
   * @param  None
   * @retval None
   */
-static void SystemClock_Config(void)
-{
+static void SystemClock_Config(void) {
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
   RCC_OscInitTypeDef RCC_OscInitStruct;
   RCC_PeriphCLKInitTypeDef PeriphClkInitStruct;
   HAL_StatusTypeDef ret = HAL_OK;
-
   /* Enable Power Control clock */
   __HAL_RCC_PWR_CLK_ENABLE();
-
   /* The voltage scaling allows optimizing the power consumption when the device is
      clocked below the maximum system frequency, to update the voltage scaling value
      regarding system frequency refer to product datasheet.  */
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-
   /* Enable HSE Oscillator and activate PLL with HSE as source */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
@@ -191,15 +168,13 @@ static void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLQ = 9;
 
   ret = HAL_RCC_OscConfig(&RCC_OscInitStruct);
-  if(ret != HAL_OK)
-  {
+  if (ret != HAL_OK) {
     Error_Handler();
   }
 
   /* Activate the OverDrive to reach the 216 MHz Frequency */
   ret = HAL_PWREx_EnableOverDrive();
-  if(ret != HAL_OK)
-  {
+  if (ret != HAL_OK) {
     Error_Handler();
   }
 
@@ -210,8 +185,7 @@ static void SystemClock_Config(void)
   PeriphClkInitStruct.PLLSAI.PLLSAIQ = 4;
   PeriphClkInitStruct.PLLSAI.PLLSAIP = RCC_PLLSAIP_DIV4;
   ret = HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
-  if(ret != HAL_OK)
-  {
+  if (ret != HAL_OK) {
     Error_Handler();
   }
 
@@ -223,8 +197,7 @@ static void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
   ret = HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7);
-  if(ret != HAL_OK)
-  {
+  if (ret != HAL_OK) {
     Error_Handler();
   }
 }
@@ -232,9 +205,8 @@ static void SystemClock_Config(void)
 /**
  * callback function to USBHInit().
  */
-static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id){
-	switch(id)
-	  {
+static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id) {
+	switch (id) {
 	  case HOST_USER_SELECT_CONFIGURATION:
 	    break;
 
@@ -242,30 +214,27 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id){
 		AppState = APPLICATION_ERROR;
 		LCD_ErrLog("Host disconnection! \n");
 	    LCD_ClearTextZone();
-	    if(FATFS_UnLinkDriver(USBKey_Path) != 0)
-	    {
-	      LCD_ErrLog("ERROR : Cannot unlink FatFS driver! \n");
+	    if (FATFS_UnLinkDriver(USBKey_Path) != 0) {
+	      LCD_ErrLog("Cannot unlink FatFS driver! \n");
 	    }
-	    if(f_mount(NULL, "", 0) != FR_OK)
-	    {
-	     LCD_ErrLog("ERROR : Cannot DeInitialize FatFs! \n");
+	    if (f_mount(NULL, "", 0) != FR_OK) {
+	      LCD_ErrLog("Cannot DeInitialize FatFs! \n");
 	    }
 	    break;
 
 	  case HOST_USER_CLASS_ACTIVE:
 		AppState = APPLICATION_READY;
+		LCD_ClearTextZone();
 	    break;
 
 	  case HOST_USER_CONNECTION:
 	     /* Link the USB Mass Storage disk I/O driver */
-	    if(FATFS_LinkDriver(&USBH_Driver, USBKey_Path) != 0)
-	    {
-	      LCD_ErrLog("ERROR : Cannot link FatFS driver! \n");
-	     break;
+	    if (FATFS_LinkDriver(&USBH_Driver, USBKey_Path) != 0) {
+	      LCD_ErrLog("Cannot link FatFS driver! \n");
+	      break;
 	    }
-	    if(f_mount(&USBH_FatFs, "", 0) != FR_OK)
-	    {
-	      LCD_ErrLog("ERROR : Cannot Initialize FatFs! \n");
+	    if (f_mount(&USBH_FatFs, "", 0) != FR_OK) {
+	      LCD_ErrLog("Cannot Initialize FatFs! \n");
 	      break;
 	    }
 	    break;
@@ -278,11 +247,10 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id){
 /*
  * @brief Clears lines from 3 to 15
  */
-static void LCD_ClearTextZone(void){
+void LCD_ClearTextZone(void) {
   uint8_t i = 0;
 
-  for(i= 0; i < 13; i++)
-  {
+  for (i= 1; i < 13; i++) {
     BSP_LCD_ClearStringLine(i + 3);
   }
 }
@@ -292,9 +260,8 @@ static void LCD_ClearTextZone(void){
   * @param  None
   * @retval None
   */
-static void Error_Handler(void)
-{
-  while(1)
+static void Error_Handler(void) {
+  while (1)
   {
 	  //nop
   }

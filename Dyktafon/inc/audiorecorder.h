@@ -12,7 +12,7 @@
 
 /*defines********************************************************************/
 #define REC_WAVE_NAME 	"Wave.wav"
-#define BUFFER_SIZE 	512
+#define BUFFER_SIZE 	1024
 
 /*format typedef*/
 typedef struct {

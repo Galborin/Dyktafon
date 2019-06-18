@@ -22,6 +22,9 @@ typedef enum {
 	APPLICATION_READY,
 	APPLICATION_REC_INIT,
 	APPLICATION_RECORDING,
+	APPLICATION_REC_PAUSE,
+	APPLICATION_PAUSE_WAIT,
+	APPLICATION_REC_RESUME,
 	APPLICATION_REC_STOP,
 	APPLICATION_ERROR,
 }ApplicationState_t;
@@ -31,5 +34,6 @@ uint8_t  Touchscreen_Calibration (void);
 uint16_t TouchScreen_Get_Calibrated_X(uint16_t x);
 uint16_t TouchScreen_Get_Calibrated_Y(uint16_t y);
 uint8_t  TouchScreen_IsCalibrationDone(void);
+void LCD_ClearTextZone(void);
 
 #endif
